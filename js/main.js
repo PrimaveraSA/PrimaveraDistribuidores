@@ -4,7 +4,7 @@
     let cacheCoincidenciasBuenas = new Map();
 
     /* === UMBRALES === */
-    const UMBRAL_BUENA = 59;
+    const UMBRAL_BUENA = 67;
     const UMBRAL_DESCARTE = 0;
 
     /* === TRACKING DE DUPLICADOS === */
@@ -104,46 +104,121 @@
         });
     }
 
-    // === Función de similitud mejorada ===
-    function similarity(a, b){
-    // dividir en palabras y filtrar palabras irrelevantes
-    let wordsA = normalize(a).split(/\s+/).filter(w => !ignoreWords.has(w));
-    let wordsB = normalize(b).split(/\s+/).filter(w => !ignoreWords.has(w));
+    // === Función de similitud mejorada con aprendizaje controlado y filtrado seguro ===
+    function similarity(a, b) {
+        // === 0️⃣ Obtener lista de coincidencias buenas sin romper el Map ===
+        const listaBuenas = Array.isArray(cacheCoincidenciasBuenas)
+            ? cacheCoincidenciasBuenas
+            : Array.from(cacheCoincidenciasBuenas?.values?.() || []);
 
-    // si quedan vacíos, usar todas las palabras originales para garantizar comparación
-    if(wordsA.length === 0) wordsA = normalize(a).split(/\s+/);
-    if(wordsB.length === 0) wordsB = normalize(b).split(/\s+/);
+        // === 1️⃣ Normalizar y limpiar ===
+        let textA = normalize(a);
+        let textB = normalize(b);
 
-    let palabrasHistoricas = new Set();
-    cacheCoincidenciasBuenas.forEach(c => {
-        const prod = normalize(c.producto_excel2).split(/\s+/).filter(w => !ignoreWords.has(w));
-        prod.forEach(w => {
-            if(wordsB.some(bw => bw.includes(w) || w.includes(bw))) palabrasHistoricas.add(w);
+        // === 2️⃣ Generar diccionario de equivalencias aprendido (solo de coincidencias reales y similares) ===
+        let diccionarioAprendido = {};
+
+        listaBuenas.forEach(c => {
+            if (!c?.producto_excel1 || !c?.producto_excel2) return;
+
+            const p1 = normalize(c.producto_excel1);
+            const p2 = normalize(c.producto_excel2);
+
+            // Si son extremadamente distintos, no aprender de ellos
+            const similitudBase = simpleSimilarity(p1, p2);
+            if (similitudBase < 50) return;
+
+            const palabras1 = p1.split(/\s+/).filter(w => !ignoreWords.has(w));
+            const palabras2 = p2.split(/\s+/).filter(w => !ignoreWords.has(w));
+
+            // Aprende solo si longitud y contenido son parecidos
+            const len = Math.min(palabras1.length, palabras2.length);
+            for (let i = 0; i < len; i++) {
+                const w1 = palabras1[i];
+                const w2 = palabras2[i];
+                if (
+                    w1 !== w2 &&
+                    w1.length > 2 &&
+                    w2.length > 2 &&
+                    simpleWordSim(w1, w2) >= 0.8 // solo si son muy parecidas
+                ) {
+                    diccionarioAprendido[w1] = w2;
+                    diccionarioAprendido[w2] = w1;
+                }
+            }
         });
-    });
 
-    let matches = 0;
-    let palabrasContadas = new Set();
-
-    wordsA.forEach(word => {
-        if(palabrasContadas.has(word)) return;
-
-        const isNum = /\d/.test(word);
-        const matched = 
-            wordsB.includes(word) ||                      // palabra exacta
-            palabrasHistoricas.has(word) ||              // coincidencia histórica
-            wordsB.some(bw => bw.includes(word) || word.includes(bw)) || // parcial
-            (isNum && wordsB.some(bw => bw.replace(/\D/g,'') === word.replace(/\D/g,''))); // números iguales
-
-        if(matched){
-            matches++;
-            palabrasContadas.add(word);
+        // === 3️⃣ Aplicar el aprendizaje a ambos textos ===
+        for (const [key, val] of Object.entries(diccionarioAprendido)) {
+            const regex = new RegExp(`\\b${key}\\b`, "gi");
+            textA = textA.replace(regex, val);
+            textB = textB.replace(regex, val);
         }
-    });
 
-    // devolver porcentaje de coincidencia sobre la cantidad de palabras de A
-    return (matches / wordsA.length) * 100;
+        // === 4️⃣ Separar palabras y filtrar irrelevantes ===
+        let wordsA = textA.split(/\s+/).filter(w => !ignoreWords.has(w));
+        let wordsB = textB.split(/\s+/).filter(w => !ignoreWords.has(w));
+        if (wordsA.length === 0) wordsA = textA.split(/\s+/);
+        if (wordsB.length === 0) wordsB = textB.split(/\s+/);
+
+        // === 5️⃣ Excluir productos ya confirmados (evita reusarlos) ===
+        const productosConfirmados = new Set(
+            listaBuenas.map(c => normalize(c.producto_excel1))
+        );
+        if (
+            productosConfirmados.has(normalize(a)) ||
+            productosConfirmados.has(normalize(b))
+        ) {
+            return 0;
+        }
+
+        // === 6️⃣ Calcular coincidencias ===
+        let matches = 0;
+        const palabrasContadas = new Set();
+
+        wordsA.forEach(word => {
+            if (palabrasContadas.has(word)) return;
+
+            const isNum = /\d/.test(word);
+            const matched =
+                wordsB.includes(word) ||
+                wordsB.some(bw => bw.includes(word) || word.includes(bw)) ||
+                (isNum &&
+                    wordsB.some(
+                        bw => bw.replace(/\D/g, "") === word.replace(/\D/g, "")
+                    ));
+
+            if (matched) {
+                matches++;
+                palabrasContadas.add(word);
+            }
+        });
+
+        return (matches / wordsA.length) * 100;
     }
+
+    // === Función auxiliar rápida: similitud básica de texto ===
+    function simpleSimilarity(t1, t2) {
+        const w1 = t1.split(/\s+/);
+        const w2 = t2.split(/\s+/);
+        let hits = 0;
+        w1.forEach(w => {
+            if (w2.includes(w)) hits++;
+        });
+        return (hits / Math.max(w1.length, 1)) * 100;
+    }
+
+    // === Función auxiliar rápida: similitud entre palabras ===
+    function simpleWordSim(a, b) {
+        if (!a || !b) return 0;
+        const min = Math.min(a.length, b.length);
+        let same = 0;
+        for (let i = 0; i < min; i++) if (a[i] === b[i]) same++;
+        return same / Math.max(a.length, b.length);
+    }
+
+
+
 
     /* === Acciones BD === */
     async function guardarCoincidenciaBuena(prod1, prod2, p1, p2, sim){

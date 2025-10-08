@@ -433,28 +433,3 @@
   transition: all 0.4s ease;
   z-index: 1000;
 }
-
-/* === Estilos por defecto: flotantes ocultos === */
-#floatingResetBtn,
-#floatingDownloadBtn {
-  display: none !important;
-  position: fixed;
-  bottom: 20px;
-  z-index: 99999;
-  cursor: pointer;
-  font-weight: bold;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  transition: filter 0.2s;
-}
-
-#floatingResetBtn:hover,
-#floatingDownloadBtn:hover {
-  filter: brightness(1.1);
-}
-
-/* === Clase que activa los flotantes === */
-.flotantes-activos {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-}
