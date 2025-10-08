@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Actualizador de Precios Excel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="img/logo.png" type="image/png">
+  
+  <script src="js/libs/exceljs.min.js"></script>
+  <script src="js/libs/FileSaver.min.js"></script>
+
+  <link rel="stylesheet" href="css/styles2.css">
+</head>
+<body>
+  <div class="porcentaje-panel">
+    <header>
+      <h1>Actualizador de Porcentajes</h1>
+      <p>Sube tu archivo de productos, define los ajustes por porcentaje y aplica los cambios de manera rápida.</p>
+    </header>
+
+    <div class="toolbar">
+      <input type="file" id="fileInput" accept=".xls,.xlsx" />
+      <button id="downloadBtn" disabled>Procesar Excel</button>
+      <button id="clearBtn" class="clear-btn">🧹 Nuevo Archivo</button>
+    </div>
+
+    <div class="config-section">
+      <div class="rule-form">
+        <select id="marcaInput">
+          <option value="">Seleccione la Marca</option>
+        </select>
+        <select id="lineaInput">
+          <option value="">Seleccione la Línea (opcional)</option>
+        </select>
+        <select id="unidadInput">
+          <option value="">Selecciona la unidad de medida</option>
+          <option>UNIDAD</option>
+          <option>DOCENA</option>
+          <option>CIENTO</option>
+          <option>CAJÓN</option>
+          <option>BOX</option>
+        </select>
+        <input type="number" id="mayoristaInput" placeholder="% Mayorista" style="width:140px;" />
+        <input type="number" id="especialInput" placeholder="% Especial" style="width:140px;" />
+        <button id="addRuleBtn">➕ Agregar Regla</button>
+      </div>
+      <div class="rules-list" id="rulesList">
+        <p style="color:gray;">No hay reglas agregadas. Crea una regla para aplicar ajustes automáticamente.</p>
+      </div>
+    </div>
+
+    <div id="previewArea">
+      <p style="color:gray;">Vista previa de los cambios aplicados aparecerá aquí después de procesar.</p>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+
+    let loadedRows = [];
+    let headers = [];
+    let rules = [];
+    let originalFileName = "Archivo";
+
+    const fileInput = document.getElementById('fileInput');
+    const downloadBtn = document.getElementById('downloadBtn'); 
+    const clearBtn = document.getElementById('clearBtn');
+    const addRuleBtn = document.getElementById('addRuleBtn');
+    const rulesList = document.getElementById('rulesList');
+    const previewArea = document.getElementById('previewArea');
+    const log = document.getElementById('log');
+
+    // Colores para filas modificadas
+    const highlightColors = ["FFFF99","CCFFCC","99CCFF"]; // amarillo, verde, azul
+    let colorIndex = 0;
+
+    // === Llenar selects dinámicamente ===
+    const marcaSelect = document.getElementById("marcaInput");
+    MARCAS.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.toUpperCase();
+      opt.textContent = m;
+      marcaSelect.appendChild(opt);
+    });
+    const lineaSelect = document.getElementById("lineaInput");
+    LINEAS.forEach(l => {
+      const opt = document.createElement("option");
+      opt.value = l.toUpperCase();
+      opt.textContent = l;
+      lineaSelect.appendChild(opt);
+    });
+
+    // === Agregar reglas ===
+    addRuleBtn.addEventListener('click', () => {
+      const marca = marcaSelect.value.trim().toUpperCase();
+      const linea = lineaSelect.value.trim().toUpperCase();
+      const unidad = document.getElementById('unidadInput').value.trim().toUpperCase();
+      const mayorista = document.getElementById('mayoristaInput').value;
+      const especial = document.getElementById('especialInput').value;
+
+      if (!marca || !unidad || !mayorista || !especial) {
+        alert("Completa al menos Marca, Unidad, % Mayorista y % Especial.");
+        return;
+      }
+
+      rules.push({ marca, linea, unidad, mayorista: parseFloat(mayorista), especial: parseFloat(especial) });
+      renderRules();
+
+      // ✅ Activar botón de descarga cuando hay al menos una regla
+      downloadBtn.disabled = rules.length === 0;
+    });
+
+    function renderRules() {
+      if (rules.length === 0) {
+        rulesList.innerHTML = '<p style="color:gray;">No hay reglas agregadas. Crea una regla para aplicar ajustes automáticamente.</p>';
+        // 🔒 Desactivar el botón si ya no hay reglas
+        downloadBtn.disabled = true;
+        return;
+      }
+
+      let html = "<table><thead><tr><th>Marca</th><th>Línea</th><th>Unidad</th><th>% Mayorista</th><th>% Especial</th><th>Acción</th></tr></thead><tbody>";
+      rules.forEach((r, i) => {
+        html += `<tr data-index="${i}">
+          <td>${r.marca}</td>
+          <td>${r.linea || "-"}</td>
+          <td>${r.unidad}</td>
+          <td>${r.mayorista}</td>
+          <td>${r.especial}</td>
+          <td><button class="remove-btn">❌</button></td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      rulesList.innerHTML = html;
+
+      // Asignar event listeners a los botones de eliminar
+      const removeBtns = rulesList.querySelectorAll('.remove-btn');
+      removeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.closest('tr').dataset.index);
+          rules.splice(index, 1);
+          renderRules();
+        });
+      });
+    }
+
+    // === Cargar Excel ===
+    fileInput.addEventListener('change', async (e) => {
+      previewArea.innerHTML = '';
+      log.textContent = '';
+      const file = e.target.files[0];
+      if (!file) return;
+
+      originalFileName = file.name.split('.').slice(0, -1).join('.') || "Archivo";
+
+      const data = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(data);
+      const worksheet = workbook.worksheets[0];
+
+      loadedRows = [];
+      worksheet.eachRow((row) => {
+        loadedRows.push(row.values.slice(1));
+      });
+
+      if (loadedRows.length < 2) {
+        previewArea.innerHTML = '<div class="warn">El archivo está vacío o no tiene encabezados.</div>';
+        return;
+      }
+
+      headers = loadedRows[1]; // fila 2 = encabezados
+      const dataRows = loadedRows.slice(2); // fila 3+ = datos
+
+      // === Previsualización ===
+      const maxShow = 10;
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      for (let r = 0; r < Math.min(dataRows.length, maxShow); r++) {
+        const row = dataRows[r] || [];
+        const tr = document.createElement('tr');
+        row.forEach(val => {
+          const td = document.createElement('td');
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      previewArea.appendChild(table);
+      previewArea.style.display = 'block';
+    });
+
+    // Botón Nuevo Archivo
+    clearBtn.addEventListener('click', () => {
+      document.getElementById('confirmModal').style.display = 'flex';
+    });
+
+    // Confirmación Sí
+    document.getElementById('confirmYes').addEventListener('click', () => {
+      // Limpiar reglas y vista
+      rules = [];
+      renderRules();
+      previewArea.innerHTML = '';
+      fileInput.value = '';
+      document.getElementById('mayoristaInput').value = '';
+      document.getElementById('especialInput').value = '';
+      document.getElementById('unidadInput').value = '';
+      log.textContent = '';
+      colorIndex = 0;
+      downloadBtn.disabled = true;
+
+      // Cerrar modal
+      document.getElementById('confirmModal').style.display = 'none';
+
+      // Mostrar mensaje éxito
+      const mensaje = document.getElementById('mensajeExitoReset2');
+      mensaje.style.display = 'block';
+      setTimeout(() => mensaje.style.display = 'none', 3500);
+    });
+
+    // Confirmación No
+    document.getElementById('confirmNo').addEventListener('click', () => {
+      document.getElementById('confirmModal').style.display = 'none';
+    });
+
+    // Cerrar modal al hacer click fuera
+    window.addEventListener('click', (ev) => {
+      if (ev.target === document.getElementById('confirmModal')) {
+        document.getElementById('confirmModal').style.display = 'none';
+      }
+    });
+
+
+    // === Botón descargar actualizado con colores ===
+    downloadBtn.addEventListener('click', async () => {
+      if (loadedRows.length < 3) {
+        log.textContent = '❌ No hay datos válidos para procesar.';
+        return;
+      }
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Hoja1");
+
+        // Título
+        sheet.mergeCells(1,1,1,headers.length);
+        const titleCell = sheet.getCell(1,1);
+        titleCell.value = loadedRows[0][0] || "LISTAR-PRODUCTO - Sistema Comercial";
+        titleCell.alignment = { horizontal: "center" };
+
+        // Headers
+        const headerRow = sheet.addRow(headers.map(h => h || ""));
+        headerRow.eachCell(cell => { cell.font = { bold: true }; });
+
+        // Datos
+        const dataRows = loadedRows.slice(2);
+        dataRows.forEach(r => sheet.addRow(r.map(cell => cell == null ? "" : cell)));
+
+        // Columnas ancho ejemplo
+        sheet.columns = [
+        { key: "cod_prod", width: 10.14 },
+        { key: "cod_um", width: 10.14 },
+        { key: "cod_cost", width: 10.14 },
+        { key: "producto", width: 54 },
+        { key: "marca", width: 15 },
+        { key: "familia", width: 22.29 },
+        { key: "linea", width: 15 },
+        { key: "u.medid", width: 8 },
+        { key: "multip", width: 8 },
+        { key: "Costo IGV", width: 12 },
+        { key: "Autocalcular", width: 15 },
+        { key: "% Minorista", width: 14.14 },
+        { key: "% Mayorista", width: 14.14 },
+        { key: "% Especial", width: 12.72 }
+      ];
+
+        // Aplicar reglas con colores
+        const idxMarca = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('marca'));
+        const idxLinea = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('linea'));
+        const idxUmedid = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('u.medid'));
+        const idxMayorista = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('mayorista'));
+        const idxEspecial = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('especial'));
+        const idxAutocalc = headers.findIndex(h => String(h||'').trim().toLowerCase().includes('autocalcular'));
+
+        let cambios = 0;
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber > 2) {
+            const valM = String(row.getCell(idxMarca+1).value || '').toUpperCase();
+            const valL = String(row.getCell(idxLinea+1).value || '').toUpperCase();
+            const valU = String(row.getCell(idxUmedid+1).value || '').toUpperCase();
+
+            let modified = false;
+            rules.forEach(rule => {
+              if (valM === rule.marca && valU.includes(rule.unidad) && (!rule.linea || valL === rule.linea)) {
+                row.getCell(idxMayorista+1).value = rule.mayorista;
+                row.getCell(idxEspecial+1).value = rule.especial;
+                cambios++;
+                modified = true;
+              }
+            });
+
+            if (modified) {
+              const color = highlightColors[colorIndex % highlightColors.length];
+              row.eachCell(cell => {
+                cell.fill = { type: 'pattern', pattern:'solid', fgColor:{argb: color} };
+              });
+              colorIndex++;
+            }
+
+            if (idxAutocalc !== -1) {
+              row.getCell(idxAutocalc+1).value = valU.includes("UNIDAD") ? "S" : "N";
+            }
+          }
+        });
+
+        const finalName = `${originalFileName} - ${rules.length>0?rules[0].marca:"Marca"}.xlsx`;
+        const buf = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buf]), finalName);
+
+        log.textContent = `✅ Archivo generado. Se aplicaron ${cambios} cambios y se resaltaron filas modificadas.`;
+      } catch (err) {
+        console.error(err);
+        log.textContent = '❌ Ocurrió un error al generar el archivo.';
+      }
+    });
+
+   })();
+    
+  </script>
+</body>
+</html>

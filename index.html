@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Herramientas Primavera</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="img/logo.png" type="image/png">
+
+<!-- Librerías externas -->
+<script src="js/libs/exceljs.min.js"></script>
+<script src="js/libs/FileSaver.min.js"></script>
+<script src="js/libs/supabase.js"></script>
+
+<!-- Estilos -->
+<link rel="stylesheet" href="css/styles.css">
+
+</head>
+
+<body>
+<!-- === HEADER === -->
+<header class="header">
+  <div class="top-bar">
+    <div class="logo-area">
+      <img src="img/logo.png" alt="Logo Primavera">
+      <div class="title">Herramientas Primavera</div>
+    </div>
+  </div>
+
+  <!-- === TABS integradas en el header === -->
+  <div class="header-tabs">
+    <div class="tab-button active" data-tab="tab1">Comparación de Precios</div>
+    <div class="tab-button" data-tab="tab2">Aplicar Ajustes Automáticos</div>
+  </div>
+</header>
+
+<!-- === CONTENIDO === -->
+<main>
+  <!-- TAB 1 -->
+  <div id="tab1" class="tab-content active">
+    <section id="bloqueArchivos">
+      <h1>Actualizador de Precios</h1>
+      <p>Suba los archivos necesarios para actualizar los precios de los productos.<br>
+        Los cambios se aplicarán únicamente a los productos que coincidan entre los archivos.</p>
+
+      <div>
+        <label>Archivo de Precios de Referencia: <input type="file" id="priceFile" accept=".xls,.xlsx" /></label>
+        <div id="pricePreview"></div>
+        <div id="priceHeaders"></div>
+      </div>
+
+      <div>
+        <label>Archivo Maestro a Actualizar: <input type="file" id="masterFile" accept=".xls,.xlsx" disabled /></label>
+        <div id="masterPreview"></div>
+        <div id="masterHeaders"></div>
+      </div>
+
+      <div class="botonera">
+          <button id="processBtn" disabled>Iniciar Comparación</button>
+          <button id="descargarBtn" disabled>Descargar Resultados</button>
+          <button id="resetBtn">🧹 Limpiar y Cargar</button>
+      </div>
+
+      <div id="log"></div>
+    </section>
+
+    <section id="bloqueTablas" style="display: none;">
+      <hr>
+      <h2>Productos Coincidentes Confirmados</h2>
+      <p class="info-buenas">Estos productos coinciden entre el archivo de referencia y el maestro y pueden actualizarse automáticamente.</p>
+      <table id="tablaBuenas">
+      <thead>
+        <tr>
+          <th>Producto de Referencia</th>
+          <th>Producto en Maestro</th>
+          <th>Precio de Referencia</th>
+          <th>Precio Actual</th>
+          <th>Similitud</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      </table>
+
+      <h2>Productos Pendientes de Revisión</h2>
+      <p class="info-pendientes">Productos que requieren verificación manual antes de actualizar precios.</p>
+      <table id="tablaPendientes">
+      <thead>
+        <tr>
+          <th>Producto de Referencia</th>
+          <th>Producto en Maestro</th>
+          <th>Precio de Referencia</th>
+          <th>Precio Actual</th>
+          <th>Similitud</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      </table>
+
+      <h2>Productos Duplicados (Solo Referencia)</h2>
+      <p class="info-duplicados">
+          <b>Información únicamente.</b><br>
+          Estos productos ya existen en la base de datos. No se actualizarán para evitar duplicados, pero puede verificarlos.
+      </p>
+
+      <table id="tablaDuplicados">
+        <thead>
+            <tr>
+            <th>Producto de Referencia</th>
+            <th>Producto en Maestro</th>
+            <th>Precio de Referencia</th>
+            <th>Precio Actual</th>
+            <th>Similitud</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- TAB 2 -->
+  <div id="tab2" class="tab-content">
+    <div id="resumenResultados"></div>
+    <p>Cargando herramientas de ajustes automáticos...</p>
+  </div>
+</main>
+
+<!-- === FOOTER === -->
+<footer class="footer">
+  <p>© 2025 Primavera Distribuidores S.A.C. Todos los derechos reservados. | <a href="#">Política de Privacidad</a></p>
+</footer>
+
+<!-- === MODALES Y SCRIPTS === -->
+<div id="modalReset" class="modal-reset" style="display:none;">
+  <div class="ventana-reset">
+    <h3>🧹 Limpiar Comparación</h3>
+    <p>¿Desea borrar todos los archivos cargados y comenzar una nueva comparación?<br>
+    <b>Nota:</b> La información previamente guardada en la base permanecerá segura.</p>
+    <div class="acciones-reset">
+      <button id="confirmReset" class="ok">Sí, limpiar todo</button>
+      <button id="cancelReset" class="cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadingComparaciones" class="mensaje-carga">⏳ Cargando comparaciones. Sea Paciente...</div>
+
+<div id="mensajeExitoReset" class="mensaje-exito-reset" style="display:none;">
+  ✅ La limpieza fue exitosa. Puede cargar nuevos archivos.
+</div>
+
+<div id="modalConexion">
+  <div class="ventana">
+    <h3>⚠️ Sin conexión a Internet</h3>
+    <p>Los datos guardados no se perderán.<br>
+    Reabra sus archivos y vuelva a procesar cuando la conexión se restablezca.</p>
+    <button onclick="cerrarModalConexion()">Entendido</button>
+  </div>
+</div>
+
+<div id="conexionRestaurada">✅ Conexión restablecida. Puede continuar con su trabajo.</div>
+
+  <!-- Modal de confirmación DE Tab2 -->
+  <div id="confirmModal" class="modal-2">
+  <div class="modal-content">
+    <h3>⚠️ Nuevo Archivo</h3>
+    <p>Esto borrará todo el archivo cargado y las reglas. ¿Deseas continuar?</p>
+    <div class="modal-buttons">
+      <button id="confirmYes">Sí, borrar</button>
+      <button id="confirmNo">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="mensajeExitoReset2" class="mensaje-exito-reset2" style="display:none;">
+  ✅ La limpieza fue exitosa. Puede cargar nuevos archivos.
+</div>
+
+<script src="js/marcas.js"></script>
+<script type="module" src="js/main.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const tabs = document.querySelectorAll('.tab-button');
+  const contents = document.querySelectorAll('.tab-content');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', async () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const tabContent = document.getElementById(tab.dataset.tab);
+      if (tabContent) tabContent.classList.add('active');
+
+      if (tab.dataset.tab === 'tab2' && tabContent && !tabContent.dataset.loaded) {
+        try {
+          const r = await fetch('Porcentajes.html');
+          const html = await r.text();
+          tabContent.innerHTML = html.replace(/<\/*(html|head|body)[^>]*>/gi,'');
+          tabContent.dataset.loaded = 'true';
+          tabContent.querySelectorAll('script').forEach(s => {
+            const ns = document.createElement('script');
+            if (s.src) ns.src = s.src; else ns.textContent = s.textContent;
+            document.body.appendChild(ns);
+          });
+        } catch (e) {
+          tabContent.innerHTML = "<p>Error al cargar la pestaña 2</p>";
+          console.error(e);
+        }
+      }
+    });
+  });
+});
+
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  // ---- pestañas (compatible con tu main.js) ----
+  const tabs = document.querySelectorAll('.tab-button');
+  const contents = document.querySelectorAll('.tab-content');
+  const bloqueTablas = document.getElementById('bloqueTablas');
+  const bloqueArchivos = document.getElementById('bloqueArchivos');
+  const tab2 = document.querySelector('.tab-button[data-tab="tab2"]');
+
+  // Función para actualizar flotantes y bloquear tab2
+  function actualizarFlotantesYBloqueo(tabId) {
+    const floatReset = document.getElementById('floatingResetBtn');
+    const floatDownload = document.getElementById('floatingDownloadBtn');
+
+    if (tabId === 'tab1' && bloqueTablas && bloqueTablas.style.display !== 'none') {
+      // Mostrar flotantes
+      if (floatReset) floatReset.style.display = 'block';
+      if (floatDownload) floatDownload.style.display = 'block';
+
+      // Bloquear tab2
+      if (tab2) {
+        tab2.style.pointerEvents = 'none';
+        tab2.style.opacity = '0.5';
+      }
+    } else {
+      // Ocultar flotantes
+      if (floatReset) floatReset.style.display = 'none';
+      if (floatDownload) floatDownload.style.display = 'none';
+
+      // Desbloquear tab2
+      if (tab2) {
+        tab2.style.pointerEvents = 'auto';
+        tab2.style.opacity = '1';
+      }
+    }
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', async () => {
+
+      // Si el usuario intenta entrar a tab2 mientras bloqueTablas visible, cancelamos
+      if (tab.dataset.tab === 'tab2' && bloqueTablas && bloqueTablas.style.display !== 'none') return;
+
+      // Activar tab seleccionado y contenido correspondiente
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const tabContent = document.getElementById(tab.dataset.tab);
+      if (tabContent) tabContent.classList.add('active');
+
+      // Mostrar/ocultar bloques de Tab1
+      if (tab.dataset.tab === 'tab1') {
+        if (bloqueTablas && bloqueTablas.style.display !== 'none') {
+          bloqueArchivos.style.display = 'none';
+        } else {
+          bloqueArchivos.style.display = 'block';
+        }
+      } else {
+        // Ocultar bloqueTablas al salir de tab1
+        if (bloqueTablas) bloqueTablas.style.display = 'none';
+      }
+
+      // Actualizar flotantes y bloqueo tab2
+      actualizarFlotantesYBloqueo(tab.dataset.tab);
+
+      // Carga dinámica de Tab2 si es necesario
+      if (tab.dataset.tab === 'tab2' && tabContent && !tabContent.dataset.loaded) {
+        try {
+          const r = await fetch('Porcentajes.html');
+          const html = await r.text();
+          tabContent.innerHTML = html.replace(/<\/*(html|head|body)[^>]*>/gi,'');
+          tabContent.dataset.loaded = 'true';
+          tabContent.querySelectorAll('script').forEach(s => {
+            const ns = document.createElement('script');
+            if (s.src) ns.src = s.src; else ns.textContent = s.textContent;
+            document.body.appendChild(ns);
+          });
+        } catch(e) {
+          tabContent.innerHTML = "<p>Error al cargar la pestaña 2</p>";
+          console.error(e);
+        }
+      }
+    });
+  });
+
+  // También actualizar estado inicial al cargar la página
+  const activeTab = document.querySelector('.tab-button.active');
+  if (activeTab) actualizarFlotantesYBloqueo(activeTab.dataset.tab);
+
+  // ---- función de limpieza (intenta usar limpiarPendientes si existe en main.js) ----
+  async function doReset(){
+    try {
+      if (typeof limpiarPendientes === 'function') {
+        await limpiarPendientes();
+      }
+    } catch(err) {
+      console.warn('limpiarPendientes() falló o no está disponible:', err);
+    }
+
+    // limpiar UI local
+    try {
+      ['pricePreview','masterPreview','priceHeaders','masterHeaders','log'].forEach(id=>{
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
+      });
+
+      // vaciar tablas
+      const selectors = ['#tablaBuenas tbody', '#tablaPendientes tbody', '#tablaDuplicados tbody'];
+      selectors.forEach(sel => {
+        const tb = document.querySelector(sel);
+        if (tb) tb.innerHTML = '';
+      });
+
+      // resetear inputs y botones
+      const priceFile = document.getElementById('priceFile');
+      const masterFile = document.getElementById('masterFile');
+      if (priceFile) priceFile.value = '';
+      if (masterFile) { masterFile.value = ''; masterFile.disabled = true; }
+
+      const descargarBtn = document.getElementById('descargarBtn');
+      const processBtn = document.getElementById('processBtn');
+      if (descargarBtn) descargarBtn.disabled = true;
+      if (processBtn) processBtn.disabled = true;
+
+      // volver a la vista de archivos
+      if (bloqueTablas) bloqueTablas.style.display = 'none';
+      if (bloqueArchivos) bloqueArchivos.style.display = 'block';
+
+      // eliminar botón flotante si existe
+      ['floatingResetBtn','floatingDownloadBtn'].forEach(id => {
+        const f = document.getElementById(id);
+        if (f) f.remove();
+      });
+
+      // mostrar mensaje éxito
+      const mensaje = document.getElementById('mensajeExitoReset');
+      if (mensaje) {
+        mensaje.style.display = 'block';
+        setTimeout(()=> mensaje.style.display = 'none', 3500);
+      }
+
+      // Desbloquear tab2 después de reset
+      if (tab2) {
+        tab2.style.pointerEvents = 'auto';
+        tab2.style.opacity = '1';
+      }
+
+    } catch(e){
+      console.error('Error en doReset UI cleanup:', e);
+    }
+  }
+
+  // ---- modal y botones (globales) ----
+  const modalReset = document.getElementById('modalReset');
+  const resetBtn   = document.getElementById('resetBtn');
+  const confirmReset = document.getElementById('confirmReset');
+  const cancelReset  = document.getElementById('cancelReset');
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', ()=> {
+      if (modalReset) modalReset.style.display = 'flex';
+    });
+  }
+
+  if (cancelReset) {
+    cancelReset.addEventListener('click', ()=> {
+      if (modalReset) modalReset.style.display = 'none';
+    });
+  }
+
+  if (confirmReset) {
+    confirmReset.addEventListener('click', async ()=> {
+      if (modalReset) modalReset.style.display = 'none';
+      await doReset();
+    });
+  }
+
+  // cerrar modal si clic en overlay
+  window.addEventListener('click', (ev) => {
+    if (ev.target === modalReset) {
+      modalReset.style.display = 'none';
+    }
+  });
+
+  // ---- crear botones flotantes ----
+  const processBtn = document.getElementById('processBtn');
+  if (processBtn) {
+    processBtn.addEventListener('click', () => {
+      if (bloqueArchivos) bloqueArchivos.style.display = 'none';
+      if (bloqueTablas) bloqueTablas.style.display = 'block';
+
+      // eliminar flotantes previos por si existen
+      ['floatingResetBtn','floatingDownloadBtn'].forEach(id => {
+        const old = document.getElementById(id);
+        if (old) old.remove();
+      });
+
+      // estilos base del botón reset
+      const resetBtn = document.getElementById('resetBtn');
+      let baseStyle = {};
+      if (resetBtn) {
+        const style = window.getComputedStyle(resetBtn);
+        baseStyle = {
+          width: style.width,
+          height: style.height,
+          fontSize: style.fontSize,
+          padding: style.padding,
+          borderRadius: style.borderRadius,
+          fontWeight: style.fontWeight,
+          cursor: style.cursor,
+          letterSpacing: style.letterSpacing,
+          transition: style.transition,
+        };
+      }
+
+      // función para crear botón flotante
+      function crearBotonFlotante(id, icon, title, rightOffset, clickCallback, color = '', disabled = false) {
+        const btn = document.createElement('button');
+        btn.id = id;
+        btn.type = 'button';
+        btn.title = title;
+        btn.innerHTML = icon;
+        btn.style.position = 'fixed';
+        btn.style.bottom = '20px';
+        btn.style.right = rightOffset + 'px';
+        btn.style.zIndex = '99999';
+        btn.disabled = disabled;
+
+        // aplicar estilos base y agrandar
+        Object.assign(btn.style, baseStyle);
+        btn.style.width = `calc(${baseStyle.width} * 1.3)`;
+        btn.style.height = `calc(${baseStyle.height} * 1.3)`;
+        btn.style.fontSize = `calc(${baseStyle.fontSize} * 1.3)`;
+        btn.style.background = color;
+        btn.style.color = 'white';
+        btn.style.fontWeight = 'bold';
+        btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+
+        btn.addEventListener('mouseenter', () => btn.style.filter = 'brightness(1.1)');
+        btn.addEventListener('mouseleave', () => btn.style.filter = 'brightness(1)');
+        btn.addEventListener('click', clickCallback);
+        document.body.appendChild(btn);
+        return btn;
+      }
+      
+      // crear flotante limpiar (degradado naranja/rojo)
+      crearBotonFlotante('floatingResetBtn', '🧹', 'Nueva Comparación (limpiar)', 85, () => {
+        if (modalReset) modalReset.style.display = 'flex';
+        else doReset();
+      }, 'linear-gradient(145deg,#ff7e5f,#feb47b)');
+
+      // crear flotante descargar (azul-celeste)
+      const descargarBtn = document.getElementById('descargarBtn');
+      if (descargarBtn) descargarBtn.style.visibility = 'hidden';
+
+      const floatDownload = crearBotonFlotante(
+        'floatingDownloadBtn',
+        '💾',
+        'Descargar Resultados',
+        20,
+        () => { if (!descargarBtn.disabled) descargarBtn.click(); },
+        'linear-gradient(145deg,#00c6ff,#0072ff)',
+        descargarBtn.disabled
+      );
+      
+      // mantener sincronizado el estado disabled
+      const observer = new MutationObserver(() => { floatDownload.disabled = descargarBtn.disabled; });
+      observer.observe(descargarBtn, { attributes: true, attributeFilter: ['disabled'] });
+
+      // Bloquear tab2 mientras flotantes visibles
+      if (tab2) {
+        tab2.style.pointerEvents = 'none';
+        tab2.style.opacity = '0.5';
+      }
+    });
+  }
+
+});
+</script>
+
+</body>
+</html>

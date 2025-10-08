@@ -1,0 +1,460 @@
+/* 🌐 === RESETEO ESPECÍFICO PARA INDEX2 === */
+.porcentaje-panel * {
+  box-sizing: border-box;
+  position: relative;
+  margin: 0;
+  padding: 0;
+}
+
+.porcentaje-panel {
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  background: linear-gradient(145deg, #ffffff, #f4f6f9);
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: auto;
+  padding: 40px 20px;
+  max-width: 1100px;
+  margin: 30px auto;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  animation: panelFadeIn 0.6s ease forwards;
+  opacity: 0;
+  transform: translateY(25px);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.porcentaje-panel:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+@keyframes panelFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🧭 Encabezado */
+.porcentaje-panel h1 {
+  font-size: 2rem;
+  text-align: center;
+  color: #0066ff;
+  margin-bottom: 12px;
+  font-weight: 700;
+  animation: fadeInDown 0.6s ease;
+  letter-spacing: 0.4px;
+}
+
+.porcentaje-panel p {
+  text-align: center;
+  max-width: 650px;
+  color: #444;
+  margin-bottom: 24px;
+  font-size: 1rem;
+  line-height: 1.6;
+  animation: fadeInDown 0.8s ease;
+}
+
+/* 🧰 Controles superiores */
+.porcentaje-panel .controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  background: #f8f9fb;
+  border: 1px solid #dcdcdc;
+  padding: 16px 24px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  animation: fadeInUp 0.7s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.porcentaje-panel .controls:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 14px rgba(0,0,0,0.08);
+}
+
+.porcentaje-panel input[type="file"] {
+  padding: 10px 14px;
+  border: 1.5px dashed #bbb;
+  border-radius: 12px;
+  background: #fafafa;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.3s, border-color 0.3s;
+  font-weight: 500;
+}
+
+.porcentaje-panel input[type="file"]::file-selector-button {
+  padding: 6px 12px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-right: 10px;
+  transition: background 0.3s;
+}
+
+.porcentaje-panel input[type="file"]::file-selector-button:hover {
+  background: #0056b3;
+}
+
+.porcentaje-panel input[type="file"]:hover {
+  background: #f0f2f7;
+  border-color: #999;
+}
+
+/* 🟦 Botones */
+.porcentaje-panel button {
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-weight: 600;
+  color: #333;
+  background: #f9f9f9;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 0.3px;
+}
+
+.porcentaje-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.porcentaje-panel button:hover:not(:disabled) {
+  background: #eaeaea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
+
+.porcentaje-panel button:active {
+  transform: scale(0.97);
+}
+
+.porcentaje-panel button::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: rgba(255,255,255,0.3);
+  transform: skewX(-20deg);
+  transition: left 0.5s;
+}
+
+.porcentaje-panel button:hover::before {
+  left: 150%;
+}
+
+/* ⚙️ Sección de configuración */
+.porcentaje-panel h2 {
+  color: #111;
+  margin: 30px 0 18px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  animation: fadeInDown 0.8s ease;
+}
+
+/* 📋 Formulario de reglas */
+.porcentaje-panel .rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  background: #f9fafc;
+  border: 1px solid #dcdcdc;
+  border-radius: 14px;
+  padding: 22px;
+  max-width: 960px;
+  margin: 0 auto;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  animation: fadeInUp 0.8s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.porcentaje-panel .rule-form:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px rgba(0,0,0,0.08);
+}
+
+.porcentaje-panel .rule-form select,
+.porcentaje-panel .rule-form input[type="number"] {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #222;
+  min-width: 150px;
+  font-weight: 500;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.porcentaje-panel .rule-form select:focus,
+.porcentaje-panel .rule-form input[type="number"]:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 6px rgba(0,123,255,0.25);
+}
+
+.porcentaje-panel .rule-form option {
+  color: #222;
+}
+
+/* 🧾 Lista de reglas */
+.porcentaje-panel .rules-list {
+  margin-top: 28px;
+  max-width: 1000px;
+  width: 100%;
+  overflow-x: auto;
+  animation: fadeInUp 1.2s ease;
+}
+
+.porcentaje-panel .rules-list table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.porcentaje-panel .rules-list table:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+  transform: scale(1.002);
+}
+
+.porcentaje-panel .rules-list thead tr {
+  background: linear-gradient(145deg, #eef1f5, #dfe3ea);
+  color: #333;
+}
+
+.porcentaje-panel .rules-list th,
+.porcentaje-panel .rules-list td {
+  padding: 14px 16px;
+  text-align: center;
+  font-size: 14px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.porcentaje-panel .rules-list tbody tr {
+  transition: background 0.2s, transform 0.1s;
+}
+
+.porcentaje-panel .rules-list tbody tr:hover {
+  background: #ebf4ff;
+  transform: scale(1.008);
+}
+
+/* 📝 Log */
+.porcentaje-panel #log {
+  margin-top: 22px;
+  font-weight: 600;
+  text-align: center;
+  color: #222;
+  background: #e9f8ec;
+  border: 1px solid #cde5d2;
+  padding: 12px 22px;
+  border-radius: 10px;
+  display: inline-block;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  animation: fadeInUp 1.2s ease;
+  border-left: 4px solid #007bff;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.porcentaje-panel #log:hover {
+  opacity: 0.95;
+  transform: translateY(-3px);
+}
+
+/* 🧠 Preview area */
+.porcentaje-panel #previewArea {
+  margin-top: 28px;
+  max-width: 1000px;
+  width: 100%;
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 18px;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.06);
+  display: none;
+  animation: fadeInUp 1s ease;
+  transition: all 0.3s ease;
+}
+
+.porcentaje-panel #previewArea:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.clear-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.clear-btn:hover {
+  background: #d32f2f;
+  transform: translateY(-2px);
+}
+
+#previewArea table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+
+#previewArea table:hover {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+#previewArea th, #previewArea td {
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+#previewArea th {
+  background: #f2f4f7;
+  font-weight: 600;
+}
+
+#previewArea tbody tr:nth-child(even) {
+  background: #fafbfc;
+}
+
+#previewArea tbody tr:hover {
+  background: #eaf2ff;
+}
+
+#previewArea td {
+  line-height: 1.6;
+}
+
+#rulesList, #previewArea {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(25px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Modal --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  max-width: 400px;
+}
+
+.modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-around;
+}
+
+.confirm-btn {
+  background: #28a745;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #dc3545;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* --- Mensaje flotante --- */
+.mensaje-exito-inferior {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translate(-50%, 100px);
+  background: #4caf50;
+  color: white;
+  padding: 12px 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  opacity: 0;
+  transition: all 0.4s ease;
+  z-index: 1000;
+}
+
+/* === Estilos por defecto: flotantes ocultos === */
+#floatingResetBtn,
+#floatingDownloadBtn {
+  display: none !important;
+  position: fixed;
+  bottom: 20px;
+  z-index: 99999;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  transition: filter 0.2s;
+}
+
+#floatingResetBtn:hover,
+#floatingDownloadBtn:hover {
+  filter: brightness(1.1);
+}
+
+/* === Clase que activa los flotantes === */
+.flotantes-activos {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
